@@ -6,8 +6,7 @@ import {
   baseGoerli,
   bscTestnet,
   goerli,
-  optimismGoerli,
-  polygonMumbai,
+  optimismGoerli
 } from "wagmi/chains";
 import { publicProvider } from "wagmi/providers/public";
 
@@ -19,8 +18,7 @@ const { chains, publicClient } = configureChains(
     baseGoerli,
     bscTestnet,
     goerli,
-    optimismGoerli,
-    polygonMumbai,
+    optimismGoerli
   ],
   [publicProvider()]
 );

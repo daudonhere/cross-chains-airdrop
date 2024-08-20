@@ -1,9 +1,6 @@
 import { useEffect, useState } from "react";
 import Switch from "react-switch";
 import { ConnectButton } from "@rainbow-me/rainbowkit";
-import { ethers } from "ethers";
-import { ToastContainer, toast } from "react-toastify";
-import "react-toastify/dist/ReactToastify.css";
 import {
   useContractWrite,
   useContractRead,
@@ -12,6 +9,7 @@ import {
   erc20ABI,
   useAccount,
 } from "wagmi";
+import { ethers } from "ethers";
 import {
   AxelarQueryAPI,
   Environment,
@@ -19,10 +17,15 @@ import {
   GasToken,
 } from "@axelar-network/axelarjs-sdk";
 
+import { ToastContainer, toast } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
+
 import AirdropContract from "../hardhat/artifacts/contracts/Airdrop.sol/Airdrop.json";
 
-const POLYGON_CONTRACT_ADDRESS = process.env.NEXT_PUBLIC_POLYGON_CONTRACT_ADDRESS;
-const AVALANCHE_CONTRACT_ADDRESS = process.env.NEXT_PUBLIC_AVALANCHE_CONTRACT_ADDRESS;
+const BINANCE_CONTRACT_ADDRESS =
+  process.env.NEXT_PUBLIC_BINANCE_CONTRACT_ADDRESS;
+const AVALANCHE_CONTRACT_ADDRESS =
+  process.env.NEXT_PUBLIC_AVALANCHE_CONTRACT_ADDRESS;
 const AVALANCHE_RPC_URL = process.env.NEXT_PUBLIC_AVALANCHE_RPC_URL;
 
 export default function Home() {
@@ -37,27 +40,6 @@ export default function Home() {
   const [gasFee, setGasFee] = useState(0);
   const [amountReceived, setAmountReceived] = useState(0);
   const [airdropRecipients, setAirdropRecipients] = useState([]);
-  const provider = new ethers.providers.JsonRpcProvider(AVALANCHE_RPC_URL);
-
-  const contract = new ethers.Contract(
-    AVALANCHE_CONTRACT_ADDRESS,
-    AirdropContract.abi,
-    provider
-  );
-
-  async function readDestinationChainVariables() {
-    try {
-      const amountReceived = await contract.amountReceived();
-
-      const airdropRecipients = await contract.getRecipients();
-
-      setAmountReceived(amountReceived.toString());
-
-      setAirdropRecipients(airdropRecipients);
-    } catch (error) {
-      console.log(error);
-    }
-  }
 
   const toastOptions = {
     position: "top-right",
@@ -67,14 +49,14 @@ export default function Home() {
     draggable: true,
   };
 
-  // Approve aUSDC to be spent by the contract
+  // Approve USDC to be spent by the contract
   const { data: useContractWriteUSDCData, write: approveWrite } =
     useContractWrite({
       address: "0x2c852e740B62308c46DD29B982FBb650D063Bd07", // Address of the aUSDC contract on Polygon
       abi: erc20ABI,
       functionName: "approve",
       args: [
-        POLYGON_CONTRACT_ADDRESS,
+        BINANCE_CONTRACT_ADDRESS,
         ethers.utils.parseUnits(amount.toString(), 6),
       ],
     });
@@ -90,27 +72,33 @@ export default function Home() {
     isError: isAllowanceError,
     isLoading: isAllowanceLoading,
   } = useContractRead({
-    address: "0x2c852e740B62308c46DD29B982FBb650D063Bd07", // Address of the aUSDC contract on Polygon
+    address: "0x909dc9aF0CA61Df496D14D26221B91d6aDe71E88", // Address of the aUSDC contract on Polygon
     abi: erc20ABI,
     functionName: "allowance",
-    args: [address, POLYGON_CONTRACT_ADDRESS],
+    args: [address, BINANCE_CONTRACT_ADDRESS],
   });
 
   // Estimate Gas
+
   const gasEstimator = async () => {
-    const gas = await api.estimateGasFee(
-      EvmChain.POLYGON,
-      EvmChain.AVALANCHE,
-      GasToken.MATIC,
-      700000,
-      2
-    );
-    setGasFee(gas);
+    try {
+      const gas = await api.estimateGasFee(
+        EvmChain.POLYGON,
+        EvmChain.AVALANCHE,
+        GasToken.TBNB, // Gunakan enum GasToken yang benar
+        700000,
+        2
+      );
+      setGasFee(ethers.utils.parseUnits(gas.toString(), "wei")); // Pastikan gasFee disimpan sebagai BigNumber
+    } catch (error) {
+      console.error("Error estimating gas fee: ", error);
+      toast.error("Failed to estimate gas fee", toastOptions);
+    }
   };
 
   // Send Airdrop
   const { data: useContractWriteData, write } = useContractWrite({
-    address: POLYGON_CONTRACT_ADDRESS,
+    address: BINANCE_CONTRACT_ADDRESS,
     abi: AirdropContract.abi,
     functionName: "sendToMany",
     args: [
@@ -128,6 +116,7 @@ export default function Home() {
     hash: useContractWriteData?.hash,
   });
 
+  // Handle send airdrop button
   const handleSendAirdrop = async () => {
     if (!(amount && Addresses)) {
       toast.error("Please enter amount and addresses", toastOptions);
@@ -156,12 +145,33 @@ export default function Home() {
     toast.info("Approving...", toastOptions);
   };
 
-  useEffect(() => {
-    const body = document.querySelector("body");
-    darkMode ? body.classList.add("dark") : body.classList.remove("dark");
+  // Read data from Avalanche
+  const provider = new ethers.providers.JsonRpcProvider(AVALANCHE_RPC_URL);
+  const contract = new ethers.Contract(
+    AVALANCHE_CONTRACT_ADDRESS,
+    AirdropContract.abi,
+    provider
+  );
 
+  async function readDestinationChainVariables() {
+    try {
+      const amountReceived = await contract.amountReceived();
+
+      const airdropRecipients = await contract.getRecipients();
+
+      setAmountReceived(amountReceived.toString());
+
+      setAirdropRecipients(airdropRecipients);
+    } catch (error) {
+      console.log(error);
+    }
+  }
+
+  useEffect(() => {
     gasEstimator();
     readDestinationChainVariables();
+    const body = document.querySelector("body");
+    darkMode ? body.classList.add("dark") : body.classList.remove("dark");
 
     isSuccess
       ? toast.success("Airdrop sent!", {
@@ -236,6 +246,7 @@ export default function Home() {
             className="react-switch"
           />
           <ConnectButton />
+
         </div>
       </header>
 
@@ -256,6 +267,15 @@ export default function Home() {
             <h2 className="text-2xl font-bold mb-4">
               Airdrop Tokens 💸 Polygon to Avalanche
             </h2>
+            <div className="flex flex-col mb-4">
+              <label className="font-semibold mb-2">Amount</label>
+              <input
+                type="number"
+                placeholder="Enter amount"
+                className="border border-gray-300 rounded-lg p-2"
+                onChange={(e) => setAmount(e.target.value)}
+              />
+            </div>
             {isTextareaVisible && (
               <div className="flex flex-col mb-4">
                 <label className="font-semibold mb-2">Addresses</label>
@@ -284,8 +304,6 @@ export default function Home() {
               </button>
             )}
           </div>
-
-          
 
           <div className="border border-gray-300 rounded-lg p-8 m-2 ">
             <h2 className="text-2xl font-bold mb-4">Airdrop Status 🎉</h2>
@@ -325,7 +343,7 @@ export default function Home() {
                 </div>
               </>
             ) : (
-            <span className="text-red-500">Waiting for response...</span>
+              <span className="text-red-500">Waiting for response...</span>
             )}
           </div>
         </div>
@@ -344,4 +362,3 @@ export default function Home() {
     </div>
   );
 }
-

@@ -21,15 +21,21 @@ task("accounts", "Prints the list of accounts", async (taskArgs, hre) => {
 module.exports = {
   solidity: "0.8.9",
   networks: {
-    amoy: {
-      url: "https://rpc.ankr.com/polygon_amoy",
-      chainId: 80002,
+    tbnb: {
+      url: "https://rpc.ankr.com/bsc_testnet_chapel",
+      chainId: 97,
       accounts: [PRIVATE_KEY],
     },
     avalanche: {
       url: "https://avalanche-fuji-c-chain-rpc.publicnode.com",
       chainId: 43113,
       accounts: [PRIVATE_KEY],
+    },
+  },
+  etherscan: {
+    url: "https://rpc.ankr.com/polygon_amoy",
+    apiKey: {
+      polygonAmoy: "RZ2RSK3GIMZHPGF57NN42A9PZQET8K4FD6",
     },
   },
 };

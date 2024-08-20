@@ -2,7 +2,7 @@ const hre = require("hardhat");
 
 async function main() {
   const Airdrop = await hre.ethers.deployContract("Airdrop", [
-    "0xC249632c2D40b9001FE907806902f63038B737Ab",
+    "0x4D147dCb984e6affEEC47e44293DA442580A3Ec0",
     "0xbE406F0189A0B4cf3A05C286473D23791Dd44Cc6",
   ]);
 
